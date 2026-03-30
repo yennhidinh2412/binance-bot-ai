@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 Trading Bot Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 15px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 { font-size: 1.8em; margin-bottom: 5px; }
+        .header p { opacity: 0.9; font-size: 0.9em; }
+        
+        .grid { display: grid; gap: 15px; }
+        .grid-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-3 { grid-template-columns: repeat(3, 1fr); }
+        
+        @media (max-width: 1200px) { .grid-3 { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Account Card */
+        .account-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            text-align: center;
+        }
+        
+        .account-item .label { font-size: 0.85em; color: #666; margin-bottom: 5px; }
+        .account-item .value { font-size: 1.3em; font-weight: bold; color: #333; }
+        .account-item .value.positive { color: #28a745; }
+        .account-item .value.negative { color: #dc3545; }
+        
+        /* AI Signal Cards */
+        .signal-card {
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .signal-card.btc { background: linear-gradient(135deg, #F7931A 0%, #FFA500 100%); }
+        .signal-card.eth { background: linear-gradient(135deg, #627EEA 0%, #4B6BB7 100%); }
+        .signal-card.sol { background: linear-gradient(135deg, #9945FF 0%, #14F195 100%); }
+        
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .signal-symbol { font-size: 1.3em; font-weight: bold; }
+        .signal-logo { font-size: 1.8em; opacity: 0.8; }
+        
+        .signal-price {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .signal-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            background: rgba(255,255,255,0.15);
+            padding: 12px;
+            border-radius: 8px;
+        }
+        
+        .signal-info-item { display: flex; justify-content: space-between; }
+        .signal-info-item .label { opacity: 0.9; }
+        .signal-info-item .value { font-weight: bold; }
+        
+        .signal-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+        
+        .signal-badge.long { background: rgba(40, 167, 69, 0.3); }
+        .signal-badge.short { background: rgba(220, 53, 69, 0.3); }
+        .signal-badge.hold { background: rgba(255, 193, 7, 0.3); }
+        
+        /* Positions Table */
+        .positions-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        
+        .positions-table th {
+            background: #f8f9fa;
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .positions-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .positions-table tr:hover { background: #f8f9fa; }
+        
+        .side-long { color: #28a745; font-weight: bold; }
+        .side-short { color: #dc3545; font-weight: bold; }
+        .pnl-positive { color: #28a745; font-weight: bold; }
+        .pnl-negative { color: #dc3545; font-weight: bold; }
+        
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .btn-start { background: #28a745; color: white; }
+        .btn-stop { background: #dc3545; color: white; }
+        .btn-refresh { background: #17a2b8; color: white; }
+        .btn-emergency { background: #ff4444; color: white; font-size: 16px; }
+        
+        /* Logs */
+        .logs {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .status-badge.running { background: #d4edda; color: #155724; }
+        .status-badge.stopped { background: #f8d7da; color: #721c24; }
+        
+        .no-data {
+            text-align: center;
+            color: #999;
+            padding: 30px;
+            font-style: italic;
+        }
+        
+        .update-time {
+            font-size: 0.8em;
+            color: #999;
+            text-align: right;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🤖 Binance Trading Bot</h1>
+            <p>AI-Powered Futures Trading | <span id="current-time">--</span></p>
+        </div>
+        
+        <!-- Account Overview -->
+        <div class="card" style="margin-bottom: 15px;">
+            <h3>💰 Account Overview 
+                <span id="bot-status" class="status-badge stopped" style="margin-left: auto;">STOPPED</span>
+            </h3>
+            <div class="account-grid">
+                <div class="account-item">
+                    <div class="label">Balance</div>
+                    <div class="value" id="account-balance">$0.00</div>
+                </div>
+                <div class="account-item">
+                    <div class="label">Available</div>
+                    <div class="value" id="account-available">$0.00</div>
+                </div>
+                <div class="account-item">
+                    <div class="label">Unrealized PnL</div>
+                    <div class="value" id="account-pnl">$0.00</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- AI Signals -->
+        <div class="grid grid-3" style="margin-bottom: 15px;">
+            <!-- BTC Signal -->
+            <div class="signal-card btc">
+                <div class="signal-header">
+                    <div class="signal-symbol">₿ BTC/USDT</div>
+                    <div class="signal-logo">₿</div>
+                </div>
+                <div class="signal-price" id="btc-price">$--</div>
+                <div class="signal-info">
+                    <div class="signal-info-item">
+                        <span class="label">Signal:</span>
+                        <span class="value" id="btc-signal">--</span>
+                    </div>
+                    <div class="signal-info-item">
+                        <span class="label">Confidence:</span>
+                        <span class="value" id="btc-confidence">--%</span>
+                    </div>
+                    <div class="signal-info-item">
+                        <span class="label">TP:</span>
+                        <span class="value" id="btc-tp">--</span>
+                    </div>
+                    <div class="signal-info-item">
+                        <span class="label">SL:</span>
+                        <span class="value" id="btc-sl">--</span>
+                    </div>
+                </div>
+                <div class="update-time" id="btc-update">Updated: --</div>
+            </div>
+            
+            <!-- ETH Signal -->
+            <div class="signal-card eth">
+                <div class="signal-header">
+                    <div class="signal-symbol">Ξ ETH/USDT</div>
+                    <div class="signal-logo">Ξ</div>
+                </div>
+                <div class="signal-price" id="eth-price">$--</div>
+                <div class="signal-info">
+                    <div class="signal-info-item">
+                        <span class="label">Signal:</span>
+                        <span class="value" id="eth-signal">--</span>
+                    </div>
+                    <div class="signal-info-item">
+                        <span class="label">Confidence:</span>
+                        <span class="value" id="eth-confidence">--%</span>
+                    </div>
+                    <div class="signal-info-item">
+                        <span class="label">TP:</span>
+                        <span class="value" id="eth-tp">--</span>
+                    </div>
+                    <div class="signal-info-item">
+                        <span class="label">SL:</span>
+                        <span class="value" id="eth-sl">--</span>
+                    </div>
+                </div>
+                <div class="update-time" id="eth-update">Updated: --</div>
+            </div>
+            
+            <!-- SOL Signal -->
+            <div class="signal-card sol">
+                <div class="signal-header">
+                    <div class="signal-symbol">◎ SOL/USDT</div>
+                    <div class="signal-logo">◎</div>
+                </div>
+                <div class="signal-price" id="sol-price">$--</div>
+                <div class="signal-info">
+                    <div class="signal-info-item">
+                        <span class="label">Signal:</span>
+                        <span class="value" id="sol-signal">--</span>
+                    </div>
+                    <div class="signal-info-item">
+                        <span class="label">Confidence:</span>
+                        <span class="value" id="sol-confidence">--%</span>
+                    </div>
+                    <div class="signal-info-item">
+                        <span class="label">TP:</span>
+                        <span class="value" id="sol-tp">--</span>
+                    </div>
+                    <div class="signal-info-item">
+                        <span class="label">SL:</span>
+                        <span class="value" id="sol-sl">--</span>
+                    </div>
+                </div>
+                <div class="update-time" id="sol-update">Updated: --</div>
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="card" style="margin-bottom: 15px;">
+            <h3>🎛️ Controls</h3>
+            <div class="controls">
+                <button class="btn btn-refresh" onclick="refreshAll()">🔄 Refresh</button>
+                <button class="btn btn-start" onclick="startBot()">🚀 Start Bot</button>
+                <button class="btn btn-stop" onclick="stopBot()">🛑 Stop Bot</button>
+                <button class="btn btn-emergency" onclick="emergencyClose()">⚠️ CLOSE ALL POSITIONS</button>
+            </div>
+        </div>
+        
+        <!-- Positions -->
+        <div class="card" style="margin-bottom: 15px;">
+            <h3>📊 Active Positions <span id="positions-count" style="margin-left: auto; font-size: 0.9em; color: #666;">(0)</span></h3>
+            <div style="overflow-x: auto;">
+                <table class="positions-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Size</th>
+                            <th>Entry</th>
+                            <th>Mark</th>
+                            <th>PnL</th>
+                            <th>ROE%</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="positions-body">
+                        <tr><td colspan="8" class="no-data">💤 No active positions</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Logs -->
+        <div class="card">
+            <h3>📋 Logs</h3>
+            <div id="logs" class="logs">Waiting for activity...</div>
+        </div>
+    </div>
+
+    <script>
+        // Update current time
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleString('vi-VN');
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+        
+        // Fetch account data
+        function updateAccount() {
+            fetch('/api/portfolio')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('account-balance').textContent = '$' + data.totalWalletBalance.toFixed(2);
+                        document.getElementById('account-available').textContent = '$' + (data.totalMarginBalance || data.totalWalletBalance).toFixed(2);
+                        
+                        const pnl = data.totalUnrealizedPnL;
+                        const pnlEl = document.getElementById('account-pnl');
+                        pnlEl.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+                        pnlEl.className = 'value ' + (pnl >= 0 ? 'positive' : 'negative');
+                    }
+                })
+                .catch(e => console.error('Error:', e));
+        }
+        
+        // Fetch AI signals
+        function updateSignals() {
+            fetch('/api/bot_analysis')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update bot status
+                        const statusEl = document.getElementById('bot-status');
+                        if (data.bot_status === 'running') {
+                            statusEl.textContent = '🟢 RUNNING';
+                            statusEl.className = 'status-badge running';
+                        } else {
+                            statusEl.textContent = '🔴 STOPPED';
+                            statusEl.className = 'status-badge stopped';
+                        }
+                        
+                        // Update each signal
+                        ['btc', 'eth', 'sol'].forEach(coin => {
+                            const symbol = coin.toUpperCase() + 'USDT';
+                            const analysis = data.analysis[symbol];
+                            
+                            if (analysis && !analysis.error) {
+                                document.getElementById(coin + '-price').textContent = '$' + analysis.current_price.toLocaleString(undefined, {minimumFractionDigits: 2});
+                                document.getElementById(coin + '-signal').textContent = analysis.signal;
+                                document.getElementById(coin + '-confidence').textContent = analysis.confidence.toFixed(1) + '%';
+                                document.getElementById(coin + '-tp').textContent = analysis.tp_price ? '$' + analysis.tp_price.toFixed(2) : '--';
+                                document.getElementById(coin + '-sl').textContent = analysis.sl_price ? '$' + analysis.sl_price.toFixed(2) : '--';
+                                document.getElementById(coin + '-update').textContent = 'Updated: ' + analysis.timestamp;
+                            }
+                        });
+                    }
+                })
+                .catch(e => console.error('Error:', e));
+        }
+        
+        // Fetch positions
+        function updatePositions() {
+            fetch('/api/positions')
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('positions-body');
+                    const countEl = document.getElementById('positions-count');
+                    
+                    if (data.success && data.positions.length > 0) {
+                        countEl.textContent = '(' + data.positions.length + ')';
+                        
+                        let html = '';
+                        data.positions.forEach(pos => {
+                            const sideClass = pos.side === 'LONG' ? 'side-long' : 'side-short';
+                            const pnlClass = pos.pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                            
+                            html += '<tr>';
+                            html += '<td><strong>' + pos.symbol + '</strong></td>';
+                            html += '<td class="' + sideClass + '">' + pos.side + '</td>';
+                            html += '<td>' + pos.size.toFixed(4) + '</td>';
+                            html += '<td>$' + pos.entryPrice.toFixed(2) + '</td>';
+                            html += '<td>$' + pos.markPrice.toFixed(2) + '</td>';
+                            html += '<td class="' + pnlClass + '">' + (pos.pnl >= 0 ? '+' : '') + '$' + pos.pnl.toFixed(2) + '</td>';
+                            html += '<td class="' + pnlClass + '">' + (pos.roe >= 0 ? '+' : '') + pos.roe.toFixed(2) + '%</td>';
+                            html += '<td><button class="btn btn-stop" style="padding: 5px 10px; font-size: 12px;" onclick="closePosition(\'' + pos.symbol + '\')">Close</button></td>';
+                            html += '</tr>';
+                        });
+                        tbody.innerHTML = html;
+                    } else {
+                        countEl.textContent = '(0)';
+                        tbody.innerHTML = '<tr><td colspan="8" class="no-data">💤 No active positions</td></tr>';
+                    }
+                })
+                .catch(e => console.error('Error:', e));
+        }
+        
+        // Fetch logs
+        function updateLogs() {
+            fetch('/api/logs')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.logs.length > 0) {
+                        const logsEl = document.getElementById('logs');
+                        logsEl.innerHTML = data.logs.slice(-15).join('\n');
+                        logsEl.scrollTop = logsEl.scrollHeight;
+                    }
+                })
+                .catch(e => console.error('Error:', e));
+        }
+        
+        // Actions
+        function refreshAll() {
+            updateAccount();
+            updateSignals();
+            updatePositions();
+            updateLogs();
+        }
+        
+        function startBot() {
+            fetch('/api/start', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    alert(data.success ? '✅ Bot started!' : '❌ ' + data.message);
+                    refreshAll();
+                });
+        }
+        
+        function stopBot() {
+            fetch('/api/stop', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    alert(data.success ? '✅ Bot stopped!' : '❌ ' + data.message);
+                    refreshAll();
+                });
+        }
+        
+        function emergencyClose() {
+            if (!confirm('⚠️ CLOSE ALL POSITIONS?\n\nThis will close all open positions immediately!')) return;
+            
+            fetch('/api/emergency_close_all', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    alert(data.success ? '✅ Closed ' + data.closed_count + ' positions!' : '❌ ' + data.error);
+                    refreshAll();
+                });
+        }
+        
+        function closePosition(symbol) {
+            if (!confirm('Close ' + symbol + ' position?')) return;
+            
+            fetch('/api/close_position', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol: symbol })
+            })
+            .then(r => r.json())
+            .then(data => {
+                alert(data.success ? '✅ ' + data.message : '❌ ' + data.error);
+                refreshAll();
+            });
+        }
+        
+        // Auto refresh
+        setInterval(updateAccount, 3000);
+        setInterval(updateSignals, 5000);
+        setInterval(updatePositions, 2000);
+        setInterval(updateLogs, 3000);
+        
+        // Initial load
+        refreshAll();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>🤖 Binance Trading Bot Dashboard</title>
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TradeBot">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 2.2em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        .card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        
+        /* Real-time Market Styles */
+        .market-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .market-card {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 15px;
+            padding: 20px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .market-card.eth { background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); }
+        .market-card.sol { background: linear-gradient(135deg, #9945FF 0%, #14F195 100%); }
+        .market-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .market-symbol { font-size: 1.3em; font-weight: bold; }
+        .market-logo { font-size: 1.8em; }
+        .market-price { font-size: 2em; font-weight: bold; margin: 8px 0; transition: color 0.15s ease; font-variant-numeric: tabular-nums; }
+        .market-price.flash-up { color: #4ade80 !important; text-shadow: 0 0 8px rgba(74,222,128,0.5); }
+        .market-price.flash-down { color: #f87171 !important; text-shadow: 0 0 8px rgba(248,113,113,0.5); }
+        .ws-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 6px; vertical-align: middle; }
+        .ws-dot.connected { background: #4ade80; box-shadow: 0 0 4px #4ade80; }
+        .ws-dot.disconnected { background: #f87171; }
+        .market-change { display: inline-block; padding: 4px 10px; border-radius: 15px; font-weight: bold; }
+        .market-change.positive { background: rgba(40, 167, 69, 0.3); color: #4ade80; }
+        .market-change.negative { background: rgba(220, 53, 69, 0.3); color: #f87171; }
+        .market-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px; }
+        .market-stat { background: rgba(255,255,255,0.1); padding: 8px; border-radius: 6px; }
+        .market-stat-label { font-size: 0.8em; opacity: 0.8; }
+        .market-stat-value { font-size: 1em; font-weight: bold; }
+        .mini-chart { margin-top: 12px; height: 60px; }
+        .mini-chart canvas { width: 100%; height: 100%; }
+        
+        /* AI Analysis Styles */
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        .analysis-card {
+            padding: 18px;
+            border-radius: 12px;
+            color: white;
+        }
+        .analysis-card.btc { background: linear-gradient(135deg, #F7931A 0%, #FFA500 100%); }
+        .analysis-card.eth { background: linear-gradient(135deg, #627EEA 0%, #4B6BB7 100%); }
+        .analysis-card.sol { background: linear-gradient(135deg, #9945FF 0%, #14F195 100%); }
+        .analysis-info { background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; margin: 10px 0; }
+        .analysis-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .analysis-row:last-child { margin-bottom: 0; }
+        
+        /* Status Section */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .status-card { text-align: center; padding: 15px; background: white; border-radius: 8px; }
+        .status-label { font-size: 0.85em; color: #666; margin-bottom: 5px; }
+        .status-value { font-size: 1.3em; font-weight: bold; color: #333; }
+        .status-value.positive { color: #28a745; }
+        .status-value.negative { color: #dc3545; }
+        
+        /* Positions Table */
+        .position-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        .position-table th { background: #f8f9fa; padding: 12px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #dee2e6; }
+        .position-table td { padding: 10px; border-bottom: 1px solid #dee2e6; }
+        .position-table tr:hover { background: #f8f9fa; }
+        
+        /* Controls */
+        .controls { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin: 15px 0; }
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .btn-start { background: #28a745; color: white; }
+        .btn-stop { background: #dc3545; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-emergency { background: #ff4444; color: white; }
+        .btn-force-sltp { background: #f97316; color: white; }
+        .btn-restart { background: #6f42c1; color: white; }
+        .btn-restart-server { background: #495057; color: white; font-size: 0.85em; padding: 6px 14px; }
+        .controls { display: flex; flex-wrap: wrap; gap: 10px; }
+        .btn-small { padding: 5px 10px; font-size: 0.8em; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-close-full { background: #dc3545; color: white; }
+        .btn-close-half { background: #ffc107; color: #212529; }
+        
+        /* Logs */
+        .logs {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .logs .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .logs .log-error { color: #ff4444; }
+        .logs .log-warn { color: #ffc107; }
+        .logs .log-success { color: #00ff00; }
+        .logs .log-info { color: #17a2b8; }
+        
+        /* Trade History */
+        .trade-summary {
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 18px;
+        }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+        .summary-item { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 12px; text-align: center; }
+        .summary-item .label { font-size: 0.78em; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; }
+        .summary-item .value { font-size: 1.35em; font-weight: bold; margin-top: 4px; }
+        .th-badge {
+            display: inline-block; padding: 3px 10px; border-radius: 20px;
+            font-size: 0.78em; font-weight: 700; letter-spacing: 0.5px;
+        }
+        .badge-long  { background: #d4edda; color: #155724; }
+        .badge-short { background: #f8d7da; color: #721c24; }
+        .badge-btc   { background: #fff3cd; color: #856404; }
+        .badge-eth   { background: #cce5ff; color: #004085; }
+        .badge-sol   { background: #e2d9f3; color: #432874; }
+        .badge-win   { background: #d4edda; color: #155724; }
+        .badge-loss  { background: #f8d7da; color: #721c24; }
+        .pnl-usd-up  { color: #22c55e; font-weight: 700; font-size: 1.05em; }
+        .pnl-usd-dn  { color: #ef4444; font-weight: 700; font-size: 1.05em; }
+        .status-tag  { font-size: 0.82em; white-space: nowrap; }
+        .hist-price  { font-family: monospace; font-size: 0.9em; color: #555; }
+        .hist-time   { font-size: 0.78em; color: #888; white-space: nowrap; }
+        .hist-qty    { font-family: monospace; font-size: 0.85em; color: #444; }
+        .trade-row:hover { background: rgba(102,126,234,0.06) !important; }
+        
+        /* Utilities */
+        .pnl-positive { color: #28a745; }
+        .pnl-negative { color: #dc3545; }
+        .text-center { text-align: center; }
+        .loading { text-align: center; color: #666; font-style: italic; padding: 20px; }
+        .blink-green { animation: blinkGreen 0.8s ease-in-out; }
+        .blink-red { animation: blinkRed 0.8s ease-in-out; }
+        @keyframes blinkGreen { 50% { background-color: rgba(40, 167, 69, 0.3); } }
+        @keyframes blinkRed { 50% { background-color: rgba(220, 53, 69, 0.3); } }
+        
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: none;
+        }
+        .toast {
+            pointer-events: auto;
+            min-width: 320px;
+            max-width: 440px;
+            padding: 16px 20px;
+            border-radius: 14px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transform: translateX(120%);
+            opacity: 0;
+            animation: toastIn 0.45s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+            position: relative;
+            overflow: hidden;
+        }
+        .toast.removing {
+            animation: toastOut 0.35s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+        }
+        .toast-icon {
+            font-size: 22px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .toast-body {
+            flex: 1;
+            line-height: 1.5;
+        }
+        .toast-title {
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+        .toast-msg {
+            font-size: 13px;
+            opacity: 0.92;
+        }
+        .toast-close {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0 2px;
+            flex-shrink: 0;
+            transition: color 0.2s;
+        }
+        .toast-close:hover { color: white; }
+        .toast-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 0 0 14px 14px;
+            animation: toastProgress var(--toast-duration) linear forwards;
+        }
+        .toast.success { background: linear-gradient(135deg, #00b09b, #96c93d); }
+        .toast.error   { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .toast.warning { background: linear-gradient(135deg, #f39c12, #d68910); }
+        .toast.info    { background: linear-gradient(135deg, #667eea, #764ba2); }
+        
+        @keyframes toastIn {
+            0% { transform: translateX(120%); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes toastOut {
+            0% { transform: translateX(0); opacity: 1; max-height: 120px; margin-bottom: 0; }
+            100% { transform: translateX(120%); opacity: 0; max-height: 0; margin-bottom: -12px; }
+        }
+        @keyframes toastProgress {
+            0% { width: 100%; }
+            100% { width: 0%; }
+        }
+        
+        /* ======================================================
+           RESPONSIVE / PWA — iPhone-first
+           Breakpoints: 768 (tablet), 480 (phone), 390 (iPhone std)
+           ====================================================== */
+        :root {
+            --safe-t: env(safe-area-inset-top, 0px);
+            --safe-b: env(safe-area-inset-bottom, 0px);
+            --safe-l: env(safe-area-inset-left, 0px);
+            --safe-r: env(safe-area-inset-right, 0px);
+            --bnav-h: 64px; /* bottom nav height */
+        }
+
+        /* Smooth momentum scroll everywhere on iOS */
+        * { -webkit-overflow-scrolling: touch; }
+
+        /* ——— TABLET ——— */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+                padding-left: max(10px, var(--safe-l));
+                padding-right: max(10px, var(--safe-r));
+                /* Space for fixed bottom nav + iPhone home indicator */
+                padding-bottom: calc(var(--bnav-h) + var(--safe-b) + 12px);
+            }
+            .container {
+                padding: 14px;
+                border-radius: 14px;
+            }
+            .header { margin-bottom: 18px; }
+            .header h1 { font-size: 1.5em; }
+            .header p { font-size: 0.82em; color: #555; }
+            .card { padding: 14px; margin-bottom: 14px; border-radius: 12px; }
+            .card h3 { font-size: 0.95em; }
+
+            /* Market cards → single column */
+            .market-grid { grid-template-columns: 1fr; gap: 12px; }
+            .market-card { padding: 14px; }
+            .market-price { font-size: 1.7em; }
+            .market-symbol { font-size: 1.1em; }
+            .market-stats { gap: 6px; }
+            .market-stat { padding: 7px; }
+            .market-stat-value { font-size: 0.9em; }
+
+            /* Analysis cards → single column */
+            .analysis-grid { grid-template-columns: 1fr; gap: 10px; }
+            .analysis-card { padding: 14px; }
+
+            /* Account overview → 2 × 2 */
+            .status-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .status-card { padding: 10px; }
+            .status-label { font-size: 0.75em; }
+            .status-value { font-size: 1.1em; }
+
+            /* Positions table — keep h-scroll, enable smooth */
+            .pos-scroll-wrap {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                border-radius: 8px;
+            }
+            .position-table { font-size: 0.8em; min-width: 700px; }
+            .position-table th,
+            .position-table td { padding: 8px 7px; }
+
+            /* Controls — 2-column grid */
+            .controls {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            .btn {
+                padding: 14px 8px;
+                font-size: 13px;
+                min-height: 50px; /* Apple HIG 44 pt */
+                border-radius: 10px;
+            }
+
+            /* Logs */
+            .logs { height: 200px; font-size: 11.5px; }
+
+            /* Retrain terminal */
+            #retrain-terminal { height: 200px !important; font-size: 11px !important; }
+
+            /* Trade history summary → 2-col on phone */
+            .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .summary-item .value { font-size: 1.1em; }
+
+            /* Toast — bottom-anchored above nav bar */
+            .toast-container {
+                top: auto;
+                bottom: calc(var(--bnav-h) + var(--safe-b) + 14px);
+                right: 10px;
+                left: 10px;
+            }
+            .toast { min-width: unset; max-width: 100%; }
+        }
+
+        /* ——— PHONE (≤480px, e.g. iPhone SE) ——— */
+        @media (max-width: 480px) {
+            body { padding: 8px; padding-left: max(8px, var(--safe-l)); padding-right: max(8px, var(--safe-r)); }
+            .container { padding: 10px; }
+            .header h1 { font-size: 1.3em; }
+            .market-price { font-size: 1.5em; }
+            .market-logo { font-size: 1.4em; }
+            .btn { font-size: 12px; }
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
+            .status-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* ——— BOTTOM NAVIGATION BAR (mobile only) ——— */
+        .bottom-nav { display: none; }
+
+        @media (max-width: 768px) {
+            .bottom-nav {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: rgba(15, 15, 28, 0.97);
+                backdrop-filter: blur(24px);
+                -webkit-backdrop-filter: blur(24px);
+                height: calc(var(--bnav-h) + var(--safe-b));
+                padding: 0 4px;
+                padding-bottom: var(--safe-b);
+                z-index: 1000;
+                border-top: 1px solid rgba(255,255,255,0.10);
+                box-shadow: 0 -6px 28px rgba(0,0,0,0.45);
+                align-items: stretch;
+            }
+            .bnav-btn {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 2px;
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 4px 2px;
+                min-height: 44px;
+                border-radius: 10px;
+                transition: background 0.12s, transform 0.1s;
+                -webkit-tap-highlight-color: transparent;
+                color: white;
+                font-family: inherit;
+                text-decoration: none;
+            }
+            .bnav-btn:active {
+                background: rgba(255,255,255,0.13);
+                transform: scale(0.94);
+            }
+            .bnav-icon { font-size: 19px; line-height: 1.3; }
+            .bnav-label {
+                font-size: 9.5px;
+                color: rgba(255,255,255,0.60);
+                font-weight: 600;
+                letter-spacing: 0.2px;
+                white-space: nowrap;
+            }
+            .bnav-btn.bnav-danger .bnav-label { color: rgba(255,120,120,0.85); }
+        }
+
+        /* ——— iOS INSTALL BANNER ——— */
+        .ios-install-banner {
+            display: none;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 14px;
+            border-radius: 14px;
+            margin-bottom: 12px;
+            font-size: 0.82em;
+            line-height: 1.45;
+            align-items: flex-start;
+            gap: 10px;
+            box-shadow: 0 4px 16px rgba(102,126,234,0.45);
+        }
+        .ios-install-banner.visible { display: flex; }
+        .ios-install-banner .banner-icon { font-size: 1.8em; flex-shrink: 0; margin-top: 1px; }
+        .ios-install-banner .banner-text { flex: 1; }
+        .ios-install-banner .banner-close {
+            background: rgba(255,255,255,0.22);
+            border: none; color: white; border-radius: 50%;
+            width: 26px; height: 26px; font-size: 13px;
+            cursor: pointer; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- iOS Install Banner (shown only in Safari, not in standalone mode) -->
+    <div class="ios-install-banner" id="ios-banner">
+        <span class="banner-icon">📲</span>
+        <span class="banner-text">
+            <strong>Install as App</strong> — Tap <strong>Share ⎙</strong> then
+            <strong>Add to Home Screen ＋</strong> to use offline like an iPhone app.
+        </span>
+        <button class="banner-close" onclick="dismissIOSBanner()" aria-label="Dismiss">✕</button>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Binance Trading Bot</h1>
+            <p>Professional Futures Trading Dashboard</p>
+        </div>
+        
+        <!-- REAL-TIME MARKET DATA -->
+        <div class="card">
+            <h3>📊 Real-time Market Data <span id="ws-status" class="ws-dot disconnected" title="WebSocket"></span></h3>
+            <div class="market-grid">
+                <!-- BTC -->
+                <div class="market-card btc">
+                    <div class="market-header">
+                        <div><div class="market-symbol">BTC/USDT</div><div style="font-size: 0.85em; opacity: 0.8;">Bitcoin</div></div>
+                        <div class="market-logo">₿</div>
+                    </div>
+                    <div class="market-price" id="btc-price">Loading...</div>
+                    <div class="market-change positive" id="btc-change">+0.00%</div>
+                    <div class="market-stats">
+                        <div class="market-stat"><div class="market-stat-label">24h High</div><div class="market-stat-value" id="btc-high">--</div></div>
+                        <div class="market-stat"><div class="market-stat-label">24h Low</div><div class="market-stat-value" id="btc-low">--</div></div>
+                        <div class="market-stat"><div class="market-stat-label">Volume</div><div class="market-stat-value" id="btc-volume">--</div></div>
+                        <div class="market-stat"><div class="market-stat-label">Trend</div><div class="market-stat-value" id="btc-trend">--</div></div>
+                    </div>
+                    <div class="mini-chart"><canvas id="btc-chart"></canvas></div>
+                </div>
+                
+                <!-- ETH -->
+                <div class="market-card eth">
+                    <div class="market-header">
+                        <div><div class="market-symbol">ETH/USDT</div><div style="font-size: 0.85em; opacity: 0.8;">Ethereum</div></div>
+                        <div class="market-logo">Ξ</div>
+                    </div>
+                    <div class="market-price" id="eth-price">Loading...</div>
+                    <div class="market-change positive" id="eth-change">+0.00%</div>
+                    <div class="market-stats">
+                        <div class="market-stat"><div class="market-stat-label">24h High</div><div class="market-stat-value" id="eth-high">--</div></div>
+                        <div class="market-stat"><div class="market-stat-label">24h Low</div><div class="market-stat-value" id="eth-low">--</div></div>
+                        <div class="market-stat"><div class="market-stat-label">Volume</div><div class="market-stat-value" id="eth-volume">--</div></div>
+                        <div class="market-stat"><div class="market-stat-label">Trend</div><div class="market-stat-value" id="eth-trend">--</div></div>
+                    </div>
+                    <div class="mini-chart"><canvas id="eth-chart"></canvas></div>
+                </div>
+                
+                <!-- SOL -->
+                <div class="market-card sol">
+                    <div class="market-header">
+                        <div><div class="market-symbol">SOL/USDT</div><div style="font-size: 0.85em; opacity: 0.8;">Solana</div></div>
+                        <div class="market-logo">◎</div>
+                    </div>
+                    <div class="market-price" id="sol-price">Loading...</div>
+                    <div class="market-change positive" id="sol-change">+0.00%</div>
+                    <div class="market-stats">
+                        <div class="market-stat"><div class="market-stat-label">24h High</div><div class="market-stat-value" id="sol-high">--</div></div>
+                        <div class="market-stat"><div class="market-stat-label">24h Low</div><div class="market-stat-value" id="sol-low">--</div></div>
+                        <div class="market-stat"><div class="market-stat-label">Volume</div><div class="market-stat-value" id="sol-volume">--</div></div>
+                        <div class="market-stat"><div class="market-stat-label">Trend</div><div class="market-stat-value" id="sol-trend">--</div></div>
+                    </div>
+                    <div class="mini-chart"><canvas id="sol-chart"></canvas></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- AI BOT ANALYSIS -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">🤖 AI Bot Analysis</h3>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <div id="ai-status-indicator" style="padding: 6px 12px; background: #f8d7da; color: #721c24; border-radius: 6px; font-weight: bold; font-size: 0.85em;">Bot Stopped</div>
+                    <button onclick="refreshBotAnalysis()" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85em;">🔄 Refresh</button>
+                </div>
+            </div>
+            <div class="analysis-grid">
+                <!-- BTC Analysis -->
+                <div class="analysis-card btc">
+                    <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">₿ BTC/USDT</div>
+                    <div class="analysis-info">
+                        <div class="analysis-row"><span>Signal:</span><span id="btc-ai-signal" style="font-weight: bold; font-size: 1.1em;">--</span></div>
+                        <div class="analysis-row"><span>Confidence:</span><span id="btc-ai-confidence" style="font-weight: bold;">--</span></div>
+                        <div class="analysis-row"><span>Price:</span><span id="btc-ai-price">--</span></div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; font-size: 0.9em;">
+                        <div class="analysis-row"><span>TP:</span><span id="btc-ai-tp">--</span></div>
+                        <div class="analysis-row"><span>SL:</span><span id="btc-ai-sl">--</span></div>
+                    </div>
+                    <div id="btc-ai-update" style="text-align: center; margin-top: 10px; font-size: 0.8em; opacity: 0.8;">Last update: --</div>
+                    <div style="display:flex;gap:8px;margin-top:10px;">
+                        <button style="flex:1;background:#28a745;color:#fff;font-weight:bold;padding:8px;border:none;border-radius:6px;cursor:pointer;font-size:0.95em;" onclick="executeQuickTrade('BTCUSDT','LONG')">▲ LONG</button>
+                        <button style="flex:1;background:#dc3545;color:#fff;font-weight:bold;padding:8px;border:none;border-radius:6px;cursor:pointer;font-size:0.95em;" onclick="executeQuickTrade('BTCUSDT','SHORT')">▼ SHORT</button>
+                    </div>
+                </div>
+                <div class="analysis-card eth">
+                    <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">Ξ ETH/USDT</div>
+                    <div class="analysis-info">
+                        <div class="analysis-row"><span>Signal:</span><span id="eth-ai-signal" style="font-weight: bold; font-size: 1.1em;">--</span></div>
+                        <div class="analysis-row"><span>Confidence:</span><span id="eth-ai-confidence" style="font-weight: bold;">--</span></div>
+                        <div class="analysis-row"><span>Price:</span><span id="eth-ai-price">--</span></div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; font-size: 0.9em;">
+                        <div class="analysis-row"><span>TP:</span><span id="eth-ai-tp">--</span></div>
+                        <div class="analysis-row"><span>SL:</span><span id="eth-ai-sl">--</span></div>
+                    </div>
+                    <div id="eth-ai-update" style="text-align: center; margin-top: 10px; font-size: 0.8em; opacity: 0.8;">Last update: --</div>
+                    <div style="display:flex;gap:8px;margin-top:10px;">
+                        <button style="flex:1;background:#28a745;color:#fff;font-weight:bold;padding:8px;border:none;border-radius:6px;cursor:pointer;font-size:0.95em;" onclick="executeQuickTrade('ETHUSDT','LONG')">▲ LONG</button>
+                        <button style="flex:1;background:#dc3545;color:#fff;font-weight:bold;padding:8px;border:none;border-radius:6px;cursor:pointer;font-size:0.95em;" onclick="executeQuickTrade('ETHUSDT','SHORT')">▼ SHORT</button>
+                    </div>
+                </div>
+                <div class="analysis-card sol">
+                    <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">◎ SOL/USDT</div>
+                    <div class="analysis-info">
+                        <div class="analysis-row"><span>Signal:</span><span id="sol-ai-signal" style="font-weight: bold; font-size: 1.1em;">--</span></div>
+                        <div class="analysis-row"><span>Confidence:</span><span id="sol-ai-confidence" style="font-weight: bold;">--</span></div>
+                        <div class="analysis-row"><span>Price:</span><span id="sol-ai-price">--</span></div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; font-size: 0.9em;">
+                        <div class="analysis-row"><span>TP:</span><span id="sol-ai-tp">--</span></div>
+                        <div class="analysis-row"><span>SL:</span><span id="sol-ai-sl">--</span></div>
+                    </div>
+                    <div id="sol-ai-update" style="text-align: center; margin-top: 10px; font-size: 0.8em; opacity: 0.8;">Last update: --</div>
+                    <div style="display:flex;gap:8px;margin-top:10px;">
+                        <button style="flex:1;background:#28a745;color:#fff;font-weight:bold;padding:8px;border:none;border-radius:6px;cursor:pointer;font-size:0.95em;" onclick="executeQuickTrade('SOLUSDT','LONG')">▲ LONG</button>
+                        <button style="flex:1;background:#dc3545;color:#fff;font-weight:bold;padding:8px;border:none;border-radius:6px;cursor:pointer;font-size:0.95em;" onclick="executeQuickTrade('SOLUSDT','SHORT')">▼ SHORT</button>
+                    </div>
+                </div>
+        </div>
+        
+        <!-- ACCOUNT OVERVIEW -->
+        <div class="card">
+            <h3>💰 Account Overview</h3>
+            <div class="status-grid" id="account-overview">
+                <div class="status-card">
+                    <div class="status-label">Total Balance</div>
+                    <div class="status-value" id="total-balance">--</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">Available</div>
+                    <div class="status-value" id="available-balance">--</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">Unrealized PnL</div>
+                    <div class="status-value" id="unrealized-pnl">--</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">Active Positions</div>
+                    <div class="status-value" id="active-positions-count">0</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ACTIVE POSITIONS -->
+        <div class="card">
+            <h3>📊 Active Positions</h3>
+            <div class="pos-scroll-wrap">
+                <table class="position-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Size</th>
+                            <th>Entry</th>
+                            <th>Mark Price</th>
+                            <th>Liquidation</th>
+                            <th>🛡️ SL</th>
+                            <th>🎯 TP</th>
+                            <th>PnL</th>
+                            <th>ROE%</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="positions-table-body">
+                        <tr><td colspan="11" class="text-center" style="color: #999; padding: 20px;">💤 No active positions</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- BOT CONTROLS -->
+        <div class="card">
+            <h3>Bot Controls</h3>
+            <div class="controls">
+                <button class="btn btn-start" onclick="startBot()">Start Bot</button>
+                <button class="btn btn-stop" onclick="stopBot()">Stop Bot</button>
+                <button class="btn btn-restart" onclick="restartBot()">Restart Bot</button>
+                <button class="btn btn-info" onclick="checkBalance()">Refresh Balance</button>
+                <button class="btn btn-force-sltp" onclick="forceSLTP()">Force SL/TP All</button>
+                <button class="btn btn-emergency" onclick="emergencyCloseAll()">Emergency Close All</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <button class="btn btn-restart-server" onclick="restartServer()">Restart Server</button>
+            </div>
+        </div>
+        
+        <!-- TRADE HISTORY -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">📜 Trade History</h3>
+                <button class="btn btn-info" onclick="refreshTradeHistory()" style="padding: 8px 15px;">🔄 Refresh</button>
+            </div>
+            <div id="trade-history-container">
+                <div class="loading">Loading trade history...</div>
+            </div>
+        </div>
+        
+        <!-- LOGS -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin: 0;">📝 Bot Logs</h3>
+                <button class="btn btn-small btn-warning" onclick="clearLogs()">🗑️ Clear Logs</button>
+            </div>
+            <div id="logs" class="logs"><div class="log-entry log-info">Dashboard started... Waiting for commands...</div></div>
+        </div>
+
+        <!-- RETRAIN TERMINAL -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin: 0;">🧠 AI Re-Train Terminal</h3>
+                <div>
+                    <span id="retrain-status" style="margin-right:12px;font-size:0.9em;color:#888;"></span>
+                    <button id="retrain-btn" class="btn" onclick="startRetrain()"
+                        style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:8px 20px;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">
+                        🚀 Start Re-Train V6
+                    </button>
+                </div>
+            </div>
+            <div id="retrain-terminal" style="
+                background:#0d1117;color:#c9d1d9;font-family:'Fira Code',Consolas,'Courier New',monospace;
+                font-size:12px;line-height:1.6;padding:15px;border-radius:10px;
+                height:320px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;
+                border:1px solid #30363d;">
+<span style="color:#8b949e;">Terminal ready. Click "Start Re-Train V6" to retrain all models.</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let previousPnLs = {};
+        let currentTradePage = 1;
+        let miniCharts = {};
+        
+        // ==================== TOAST NOTIFICATIONS ====================
+        function showToast(type, title, message, duration = 4000) {
+            const container = document.getElementById('toast-container');
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: '🚀' };
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.style.setProperty('--toast-duration', duration + 'ms');
+            toast.innerHTML = `
+                <span class="toast-icon">${icons[type] || '📌'}</span>
+                <div class="toast-body">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-msg">${message}</div>
+                </div>
+                <button class="toast-close" onclick="dismissToast(this.parentElement)">&times;</button>
+                <div class="toast-progress"></div>
+            `;
+            container.appendChild(toast);
+            
+            const timer = setTimeout(() => dismissToast(toast), duration);
+            toast._timer = timer;
+        }
+        
+        function dismissToast(toast) {
+            if (!toast || toast.classList.contains('removing')) return;
+            clearTimeout(toast._timer);
+            toast.classList.add('removing');
+            toast.addEventListener('animationend', () => toast.remove());
+        }
+        
+        // ==================== MARKET DATA ====================
+        function initMiniCharts() {
+            ['btc', 'eth', 'sol'].forEach(symbol => {
+                const canvas = document.getElementById(`${symbol}-chart`);
+                if (canvas) miniCharts[symbol] = canvas.getContext('2d');
+            });
+        }
+        
+        function drawMiniChart(symbol, candles) {
+            const ctx = miniCharts[symbol];
+            if (!ctx || !candles || candles.length === 0) return;
+            
+            const canvas = ctx.canvas;
+            const width = canvas.width = canvas.offsetWidth;
+            const height = canvas.height = canvas.offsetHeight;
+            ctx.clearRect(0, 0, width, height);
+            
+            const prices = candles.map(c => [c.high, c.low]).flat();
+            const maxPrice = Math.max(...prices), minPrice = Math.min(...prices);
+            const priceRange = maxPrice - minPrice;
+            const candleWidth = width / candles.length;
+            
+            candles.forEach((candle, i) => {
+                const x = i * candleWidth;
+                const isGreen = candle.close >= candle.open;
+                ctx.strokeStyle = isGreen ? '#4ade80' : '#f87171';
+                ctx.fillStyle = isGreen ? 'rgba(74, 222, 128, 0.3)' : 'rgba(248, 113, 113, 0.3)';
+                
+                const highY = height - ((candle.high - minPrice) / priceRange * height);
+                const lowY = height - ((candle.low - minPrice) / priceRange * height);
+                const openY = height - ((candle.open - minPrice) / priceRange * height);
+                const closeY = height - ((candle.close - minPrice) / priceRange * height);
+                
+                ctx.beginPath();
+                ctx.moveTo(x + candleWidth/2, highY);
+                ctx.lineTo(x + candleWidth/2, lowY);
+                ctx.stroke();
+                
+                const bodyHeight = Math.abs(closeY - openY);
+                const bodyY = Math.min(openY, closeY);
+                ctx.fillRect(x + candleWidth*0.2, bodyY, candleWidth*0.6, Math.max(bodyHeight, 1));
+            });
+        }
+        
+        function updateMarketData() {
+            fetch('/api/market_data')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.data.BTCUSDT) updateCoinData('btc', data.data.BTCUSDT);
+                        if (data.data.ETHUSDT) updateCoinData('eth', data.data.ETHUSDT);
+                        if (data.data.SOLUSDT) updateCoinData('sol', data.data.SOLUSDT);
+                    }
+                }).catch(e => console.error('Market data error:', e));
+        }
+        
+        function updateCoinData(symbol, data) {
+            if (data.error) return;
+            
+            const priceEl = document.getElementById(`${symbol}-price`);
+            const oldPrice = parseFloat(priceEl.textContent.replace(/[^0-9.]/g, '')) || 0;
+            priceEl.textContent = '$' + data.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            if (oldPrice > 0 && oldPrice !== data.price) {
+                priceEl.classList.remove('blink-green', 'blink-red');
+                void priceEl.offsetWidth;
+                priceEl.classList.add(data.price > oldPrice ? 'blink-green' : 'blink-red');
+            }
+            
+            const changeEl = document.getElementById(`${symbol}-change`);
+            changeEl.textContent = (data.change_24h >= 0 ? '+' : '') + data.change_24h.toFixed(2) + '%';
+            changeEl.className = 'market-change ' + (data.change_24h >= 0 ? 'positive' : 'negative');
+            
+            document.getElementById(`${symbol}-high`).textContent = '$' + data.high_24h.toLocaleString('en-US', {maximumFractionDigits: 2});
+            document.getElementById(`${symbol}-low`).textContent = '$' + data.low_24h.toLocaleString('en-US', {maximumFractionDigits: 2});
+            document.getElementById(`${symbol}-volume`).textContent = (data.volume_24h / 1000000).toFixed(1) + 'M';
+            
+            let trend = '📊 Neutral';
+            if (data.change_24h > 2) trend = '📈 Strong Bull';
+            else if (data.change_24h > 0.5) trend = '🟢 Bullish';
+            else if (data.change_24h < -2) trend = '📉 Strong Bear';
+            else if (data.change_24h < -0.5) trend = '🔴 Bearish';
+            document.getElementById(`${symbol}-trend`).textContent = trend;
+            
+            if (data.candles && data.candles.length > 0) drawMiniChart(symbol, data.candles);
+        }
+        
+        // ==================== BINANCE WEBSOCKET (REAL-TIME PRICES) ====================
+        const wsSymbolMap = {'btcusdt': 'btc', 'ethusdt': 'eth', 'solusdt': 'sol'};
+        const wsPrecision = {'btc': 2, 'eth': 2, 'sol': 2};
+        let binanceWs = null;
+        let wsReconnectTimer = null;
+
+        function connectBinanceWs() {
+            if (binanceWs && binanceWs.readyState <= 1) return; // already open/connecting
+            const streams = 'btcusdt@aggTrade/ethusdt@aggTrade/solusdt@aggTrade';
+            const url = 'wss://fstream.binance.com/stream?streams=' + streams;
+            try {
+                binanceWs = new WebSocket(url);
+            } catch(e) { console.error('WS create error', e); return; }
+
+            binanceWs.onopen = function() {
+                const dot = document.getElementById('ws-status');
+                if (dot) { dot.className = 'ws-dot connected'; dot.title = 'WebSocket connected'; }
+                if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+            };
+
+            binanceWs.onmessage = function(evt) {
+                try {
+                    const msg = JSON.parse(evt.data);
+                    const d = msg.data;
+                    if (!d || !d.s) return;
+                    const sym = wsSymbolMap[d.s.toLowerCase()];
+                    if (!sym) return;
+                    const price = parseFloat(d.p);
+                    if (!price || price <= 0) return;
+                    updateWsPrice(sym, price);
+                } catch(e) {}
+            };
+
+            binanceWs.onclose = function() {
+                const dot = document.getElementById('ws-status');
+                if (dot) { dot.className = 'ws-dot disconnected'; dot.title = 'WebSocket disconnected'; }
+                scheduleWsReconnect();
+            };
+
+            binanceWs.onerror = function() {
+                try { binanceWs.close(); } catch(e) {}
+            };
+        }
+
+        function scheduleWsReconnect() {
+            if (wsReconnectTimer) return;
+            wsReconnectTimer = setTimeout(function() {
+                wsReconnectTimer = null;
+                connectBinanceWs();
+            }, 3000);
+        }
+
+        function updateWsPrice(symbol, price) {
+            const el = document.getElementById(symbol + '-price');
+            if (!el) return;
+            const prec = wsPrecision[symbol] || 2;
+            const formatted = '$' + price.toLocaleString('en-US', {minimumFractionDigits: prec, maximumFractionDigits: prec});
+            const oldText = el.textContent;
+            if (formatted === oldText) return; // same price, skip
+
+            el.textContent = formatted;
+            // Flash green/red
+            const oldNum = parseFloat(oldText.replace(/[^0-9.]/g, '')) || 0;
+            el.classList.remove('flash-up', 'flash-down');
+            void el.offsetWidth; // force reflow for re-triggering
+            el.classList.add(price > oldNum ? 'flash-up' : 'flash-down');
+            // Remove flash after 300ms
+            setTimeout(function() { el.classList.remove('flash-up', 'flash-down'); }, 300);
+        }
+
+        // Start WebSocket immediately
+        connectBinanceWs();
+        
+        // ==================== AI ANALYSIS ====================
+        function updateBotAnalysis() {
+            fetch('/api/bot_analysis')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const statusEl = document.getElementById('ai-status-indicator');
+                        if (data.bot_status === 'running') {
+                            statusEl.textContent = '🟢 Bot Running';
+                            statusEl.style.background = '#d4edda';
+                            statusEl.style.color = '#155724';
+                        } else {
+                            statusEl.textContent = '🔴 Bot Stopped';
+                            statusEl.style.background = '#f8d7da';
+                            statusEl.style.color = '#721c24';
+                        }
+                        
+                        ['btc', 'eth', 'sol'].forEach(symbol => {
+                            const analysis = data.analysis[symbol.toUpperCase() + 'USDT'];
+                            if (analysis && !analysis.error) {
+                                const signalEl = document.getElementById(`${symbol}-ai-signal`);
+                                signalEl.textContent = analysis.signal;
+                                signalEl.style.color = analysis.signal === 'LONG' ? '#28a745' : analysis.signal === 'SHORT' ? '#dc3545' : '#ffc107';
+                                
+                                const confEl = document.getElementById(`${symbol}-ai-confidence`);
+                                confEl.textContent = analysis.confidence.toFixed(1) + '%';
+                                confEl.style.color = analysis.confidence >= 75 ? '#28a745' : analysis.confidence >= 50 ? '#ffc107' : '#dc3545';
+                                
+                                document.getElementById(`${symbol}-ai-price`).textContent = '$' + analysis.current_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                document.getElementById(`${symbol}-ai-tp`).textContent = analysis.tp_price ? '$' + analysis.tp_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--';
+                                document.getElementById(`${symbol}-ai-sl`).textContent = analysis.sl_price ? '$' + analysis.sl_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--';
+                                document.getElementById(`${symbol}-ai-update`).textContent = 'Last update: ' + analysis.timestamp;
+                            }
+                        });
+                    }
+                }).catch(e => console.error('Bot analysis error:', e));
+        }
+        
+        function refreshBotAnalysis() { updateBotAnalysis(); }
+        
+        // ==================== ACCOUNT & POSITIONS ====================
+        function _flashEl(el, newText, colorClass) {
+            if (el.textContent !== newText) {
+                el.textContent = newText;
+                el.style.transition = 'none';
+                el.style.opacity = '0.3';
+                if (colorClass) el.className = 'status-value ' + colorClass;
+                requestAnimationFrame(() => {
+                    el.style.transition = 'opacity 0.4s ease';
+                    el.style.opacity = '1';
+                });
+            }
+        }
+
+        function _fmtUsd(val) {
+            // Hiện đủ chữ số thập phân cho số nhỏ
+            if (val === 0) return '$0.00';
+            if (Math.abs(val) < 0.01) return '$' + val.toFixed(4);
+            if (Math.abs(val) < 1) return '$' + val.toFixed(4);
+            return '$' + val.toFixed(2);
+        }
+
+        function _showBalanceError(msg) {
+            const el = document.getElementById('total-balance');
+            if (el) { el.textContent = '⚠️ ' + msg; el.style.color = '#ff6b6b'; }
+        }
+
+        function updateAccountOverview() {
+            fetch('/api/balance')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        _flashEl(document.getElementById('total-balance'),
+                            _fmtUsd(data.data.total_balance));
+                        _flashEl(document.getElementById('available-balance'),
+                            _fmtUsd(data.data.available));
+                        // Reset color nếu trước đó có lỗi
+                        const el = document.getElementById('total-balance');
+                        if (el) el.style.color = '';
+                    } else {
+                        _showBalanceError(data.error || 'API error');
+                    }
+                }).catch(e => { _showBalanceError('Network error'); console.error('Balance error:', e); });
+
+            fetch('/api/portfolio')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const pnlEl = document.getElementById('unrealized-pnl');
+                        const pnlVal = data.totalUnrealizedPnL;
+                        const pnlText = (pnlVal >= 0 ? '+' : '') + _fmtUsd(Math.abs(pnlVal));
+                        const pnlClass = pnlVal >= 0 ? 'positive' : 'negative';
+                        _flashEl(pnlEl, (pnlVal < 0 ? '-' : '') + pnlText, pnlClass);
+                        _flashEl(document.getElementById('active-positions-count'),
+                            String(data.activePositions));
+                    }
+                }).catch(e => console.error('Portfolio error:', e));
+        }
+        
+        function checkBalance() { updateAccountOverview(); }
+        
+        let _lastPositionCount = -1;
+
+        function updatePositionsTable() {
+            fetch('/api/positions')
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('positions-table-body');
+                    if (data.success && data.positions.length > 0) {
+                        const curCount = data.positions.length;
+                        if (_lastPositionCount > 0 && curCount < _lastPositionCount) {
+                            // Position just closed — refresh trade history immediately
+                            setTimeout(() => updateTradeHistory(1), 800);
+                        }
+                        _lastPositionCount = curCount;
+                        let html = '';
+                        data.positions.forEach(pos => {
+                            const pnlClass = pos.pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                            const sideClass = pos.side.toLowerCase() === 'long' ? 'pnl-positive' : 'pnl-negative';
+                            
+                            let blinkClass = '';
+                            if (previousPnLs[pos.symbol]) {
+                                if (pos.pnl > previousPnLs[pos.symbol]) blinkClass = 'blink-green';
+                                else if (pos.pnl < previousPnLs[pos.symbol]) blinkClass = 'blink-red';
+                            }
+                            previousPnLs[pos.symbol] = pos.pnl;
+                            
+                            html += `<tr class="${blinkClass}">
+                                <td><strong>${pos.symbol}</strong></td>
+                                <td><span class="${sideClass}" style="font-weight: bold;">${pos.side}</span></td>
+                                <td>${pos.size.toFixed(4)}</td>
+                                <td>$${pos.entryPrice.toFixed(2)}</td>
+                                <td>$${pos.markPrice.toFixed(2)}</td>
+                                <td style="color: #ff6b6b; font-weight: bold;">${pos.liquidationPrice > 0 ? '$' + pos.liquidationPrice.toFixed(2) : '<span style="color:#666">—</span>'}</td>
+                                <td style="color: #f97316; font-weight: bold;">${pos.stopLoss > 0 ? '$' + pos.stopLoss.toFixed(2) : '<span style="color:#666">—</span>'}</td>
+                                <td style="color: #22c55e; font-weight: bold;">${pos.takeProfit > 0 ? '$' + pos.takeProfit.toFixed(2) : '<span style="color:#666">—</span>'}</td>
+                                <td class="${pnlClass}"><strong>${pos.pnl >= 0 ? '+' : ''}${pos.pnl.toFixed(2)}</strong></td>
+                                <td class="${pnlClass}"><strong>${pos.roe >= 0 ? '+' : ''}${pos.roe.toFixed(2)}%</strong></td>
+                                <td>
+                                    <button class="btn-small btn-close-full" onclick="closePosition('${pos.symbol}', 100)">❌ Close</button>
+                                    <button class="btn-small btn-close-half" onclick="closePosition('${pos.symbol}', 50)">⚡ 50%</button>
+                                </td>
+                            </tr>`;
+                        });
+                        tbody.innerHTML = html;
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="11" class="text-center" style="color: #999; padding: 20px;">💤 No active positions</td></tr>';
+                        if (_lastPositionCount > 0) {
+                            // All positions closed — refresh trade history immediately
+                            setTimeout(() => updateTradeHistory(1), 800);
+                        }
+                        _lastPositionCount = 0;
+                    }
+                }).catch(e => console.error('Positions error:', e));
+        }
+        
+        function closePosition(symbol, percent) {
+            if (!confirm(`⚠️ Close ${percent}% of ${symbol}?`)) return;
+            fetch('/api/close_position', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({symbol: symbol, percent: percent})
+            }).then(r => r.json()).then(data => {
+                showToast(data.success ? 'success' : 'error', data.success ? 'Position Closed' : 'Close Failed', data.success ? data.message : (data.error || 'Unknown error'));
+                updatePositionsTable();
+            }).catch(e => showToast('error', 'Connection Error', e.toString()));
+        }
+
+        // ==================== QUICK TRADE BUTTONS ====================
+        function executeQuickTrade(symbol, side) {
+            showToast('info', 'Executing...', `Opening ${side} on ${symbol}`);
+            fetch('/api/execute_signal', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({symbol: symbol, side: side})
+            }).then(r => r.json()).then(data => {
+                if (data.success) {
+                    showToast('success', 'Trade Executed', `${side} ${symbol} opened successfully`);
+                    updatePositionsTable();
+                    refreshTradeHistory();
+                } else {
+                    showToast('error', 'Trade Failed', data.error || data.message || 'Unknown error');
+                }
+            }).catch(e => showToast('error', 'Connection Error', e.toString()));
+        }
+
+        // ==================== BOT CONTROLS ====================
+        function startBot() {
+            const statusEl = document.getElementById('ai-status-indicator');
+            statusEl.textContent = '🟡 Starting...';
+            statusEl.style.background = '#fff3cd';
+            statusEl.style.color = '#856404';
+            showToast('info', 'Starting Bot', 'Please wait...');
+
+            fetch('/api/start', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        statusEl.textContent = '🟢 Bot Running';
+                        statusEl.style.background = '#d4edda';
+                        statusEl.style.color = '#155724';
+                        showToast('success', 'Bot Started', data.message);
+                    } else {
+                        statusEl.textContent = '🔴 Start Failed';
+                        statusEl.style.background = '#f8d7da';
+                        statusEl.style.color = '#721c24';
+                        showToast('error', 'Start Failed', data.message);
+                    }
+                    updateBotAnalysis();
+                }).catch(e => {
+                    statusEl.textContent = '🔴 Error';
+                    showToast('error', 'Connection Error', e.toString());
+                });
+        }
+
+        function stopBot() {
+            const statusEl = document.getElementById('ai-status-indicator');
+            statusEl.textContent = '🟡 Stopping...';
+            statusEl.style.background = '#fff3cd';
+            statusEl.style.color = '#856404';
+            showToast('info', 'Stopping Bot', 'Please wait...');
+
+            fetch('/api/stop', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    statusEl.textContent = '🔴 Bot Stopped';
+                    statusEl.style.background = '#f8d7da';
+                    statusEl.style.color = '#721c24';
+                    showToast('warning', 'Bot Stopped', data.message);
+                    updateBotAnalysis();
+                }).catch(e => {
+                    showToast('error', 'Connection Error', e.toString());
+                });
+        }
+        
+        function clearLogs() {
+            fetch('/api/clear_logs', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('logs').innerHTML = '<div class="log-entry log-success">Logs cleared</div>';
+                        showToast('info', 'Logs Cleared', 'Bot logs have been cleared');
+                    }
+                }).catch(e => console.error(e));
+        }
+        
+        function emergencyCloseAll() {
+            if (!confirm('⚠️ CLOSE ALL POSITIONS? This cannot be undone!')) return;
+            fetch('/api/emergency_close_all', {method: 'POST'})
+                .then(r => r.json())
+                .then(data => {
+                    showToast(data.success ? 'success' : 'error', data.success ? 'Emergency Close' : 'Close Failed', data.success ? 'Closed ' + data.closed_count + ' positions!' : (data.error || 'Unknown error'));
+                    updatePositionsTable();
+                }).catch(e => showToast('error', 'Connection Error', e.toString()));
+        }
+
+        function restartBot() {
+            if (!confirm('Restart bot? Bot sẽ dừng rồi khởi động lại.')) return;
+            showToast('info', 'Restarting', 'Bot đang restart...');
+            fetch('/api/restart_bot', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    showToast(data.success ? 'success' : 'error', data.success ? 'Restarted' : 'Restart Failed', data.message);
+                    updateBotAnalysis();
+                }).catch(e => showToast('error', 'Connection Error', e.toString()));
+        }
+
+        function restartServer() {
+            if (!confirm('Restart toàn bộ server? Trang sẽ mất kết nối vài giây.')) return;
+            showToast('warning', 'Server Restart', 'Server đang restart...');
+            fetch('/api/restart_server', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('info', 'Restarting', data.message);
+                        setTimeout(() => location.reload(), 5000);
+                    } else {
+                        showToast('error', 'Failed', data.message);
+                    }
+                }).catch(() => {
+                    showToast('info', 'Reconnecting...', 'Server đang restart, tự reload sau 5s...');
+                    setTimeout(() => location.reload(), 5000);
+                });
+        }
+
+        function forceSLTP() {
+            if (!confirm('Đặt SL/TP cho tất cả positions hiện tại?')) return;
+            fetch('/api/force_sltp', {method: 'POST'})
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const msgs = (data.positions || []).map(p =>
+                            `${p.side} ${p.symbol}: SL=$${p.sl.toFixed(2)} TP=$${p.tp.toFixed(2)}`
+                        ).join('\n');
+                        showToast('success', '🛡️ SL/TP Placed', `${data.count} position(s) updated`);
+                        setTimeout(updatePositionsTable, 1500);
+                    } else {
+                        showToast('error', 'Failed', data.error || 'Unknown error');
+                    }
+                }).catch(e => showToast('error', 'Connection Error', e.toString()));
+        }
+        
+        // ==================== TRADE HISTORY ====================
+        function symbolBadge(sym) {
+            const s = sym.replace('USDT','');
+            const cls = {BTC:'badge-btc', ETH:'badge-eth', SOL:'badge-sol'}[s] || '';
+            return `<span class="th-badge ${cls}">${s}</span>`;
+        }
+        function sideBadge(side) {
+            const s = (side||'').toUpperCase();
+            return `<span class="th-badge ${s==='LONG'?'badge-long':'badge-short'}">${s==='LONG'?'▲ LONG':'▼ SHORT'}</span>`;
+        }
+        function winBadge(win) {
+            return win
+                ? `<span class="th-badge badge-win">✅ WIN</span>`
+                : `<span class="th-badge badge-loss">❌ LOSS</span>`;
+        }
+        function fmtTime(str) {
+            if (!str) return '-';
+            try {
+                const d = new Date(str.replace(' ','T'));
+                return d.toLocaleString('vi-VN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+            } catch(e) { return str.slice(0,16); }
+        }
+        function updateTradeHistory(page) {
+            if (!page) page = 1;
+            currentTradePage = page;
+            fetch('/api/trade_history?page=' + page)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) {
+                        document.getElementById('trade-history-container').innerHTML =
+                            `<div style="color:#dc3545;padding:20px;">⚠️ ${data.error||'Error loading'}</div>`;
+                        return;
+                    }
+                    const s = data.summary;
+                    const pg = data.pagination;
+                    const balChange = s.balance_change >= 0;
+                    const pnlPos = s.total_usd_pnl >= 0;
+
+                    let html = `<div class="trade-summary">
+                        <div class="summary-grid">
+                            <div class="summary-item"><div class="label">Balance</div><div class="value">$${(s.current_balance||0).toFixed(2)}</div></div>
+                            <div class="summary-item"><div class="label">Change</div><div class="value" style="color:${balChange?'#4ade80':'#f87171'}">${balChange?'+':''} $${(s.balance_change||0).toFixed(2)}</div></div>
+                            <div class="summary-item"><div class="label">Net PnL (USD)</div><div class="value" style="color:${pnlPos?'#4ade80':'#f87171'}">${pnlPos?'+':''} $${(s.total_usd_pnl||0).toFixed(2)}</div></div>
+                            <div class="summary-item"><div class="label">Total Trades</div><div class="value">${s.total_trades}</div></div>
+                            <div class="summary-item"><div class="label">Win / Loss</div><div class="value"><span style="color:#4ade80">${s.wins}W</span> / <span style="color:#f87171">${s.losses}L</span></div></div>
+                            <div class="summary-item"><div class="label">Win Rate</div><div class="value" style="color:${s.win_rate>=50?'#4ade80':'#f87171'}">${(s.win_rate||0).toFixed(1)}%</div></div>
+                        </div>
+                    </div>`;
+
+                    if (!data.trades || data.trades.length === 0) {
+                        html += `<div class="loading" style="padding:30px;">📭 No completed trades yet. Bot is running — trades will appear here after close.</div>`;
+                        document.getElementById('trade-history-container').innerHTML = html;
+                        return;
+                    }
+
+                    html += `<div style="overflow-x:auto;">
+                    <table class="position-table">
+                    <thead><tr>
+                        <th>Time</th>
+                        <th>Symbol</th>
+                        <th>Direction</th>
+                        <th>Entry Price</th>
+                        <th>Exit Price</th>
+                        <th>Size (Qty)</th>
+                        <th style="font-size:1.1em;">USD PnL</th>
+                        <th>% PnL</th>
+                        <th>Status</th>
+                        <th>Result</th>
+                    </tr></thead>
+                    <tbody>`;
+
+                    data.trades.forEach(t => {
+                        const pnlPos = t.usd_pnl >= 0;
+                        const pnlPctPos = t.pnl_pct >= 0;
+                        const priceDigits = t.entry_price > 100 ? 2 : (t.entry_price > 1 ? 4 : 6);
+                        html += `<tr class="trade-row" style="${pnlPos?'':'background:rgba(239,68,68,0.03)'}">
+                            <td class="hist-time">
+                                <div>${fmtTime(t.entry_time)}</div>
+                                <div style="font-size:0.75em;color:#aaa;">→ ${fmtTime(t.exit_time)}</div>
+                            </td>
+                            <td>${symbolBadge(t.symbol)}</td>
+                            <td>${sideBadge(t.signal)}</td>
+                            <td class="hist-price">$${(t.entry_price||0).toFixed(priceDigits)}</td>
+                            <td class="hist-price" style="color:${pnlPos?'#22c55e':'#ef4444'}"><strong>$${(t.exit_price||0).toFixed(priceDigits)}</strong></td>
+                            <td class="hist-qty">${(t.quantity||0) > 0 ? t.quantity.toFixed(4) : '-'}</td>
+                            <td class="${pnlPos?'pnl-usd-up':'pnl-usd-dn'}">${pnlPos?'+':''} $${Math.abs(t.usd_pnl).toFixed(2)}</td>
+                            <td style="color:${pnlPctPos?'#22c55e':'#ef4444'};font-weight:600;">${pnlPctPos?'+':''}${(t.pnl_pct||0).toFixed(3)}%</td>
+                            <td class="status-tag" style="color:${t.status_color||'#666'}">${t.status||'-'}</td>
+                            <td>${winBadge(t.win)}</td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+
+                    if (pg.total_pages > 1) {
+                        const btn = (label, page, disabled) =>
+                            `<button onclick="updateTradeHistory(${page})" ${disabled?'disabled':''}
+                                class="btn btn-info" style="padding:6px 12px;margin:0 3px;">${label}</button>`;
+                        html += `<div style="margin-top:15px;text-align:center;">
+                            ${btn('⏮', 1, pg.current_page===1)}
+                            ${btn('◀', pg.current_page-1, pg.current_page===1)}
+                            <span style="padding:0 12px;font-weight:bold;">Page ${pg.current_page} / ${pg.total_pages}  (${pg.total_trades} trades)</span>
+                            ${btn('▶', pg.current_page+1, pg.current_page===pg.total_pages)}
+                            ${btn('⏭', pg.total_pages, pg.current_page===pg.total_pages)}
+                        </div>`;
+                    }
+                    document.getElementById('trade-history-container').innerHTML = html;
+                })
+                .catch(e => {
+                    document.getElementById('trade-history-container').innerHTML =
+                        `<div style="color:#dc3545;padding:20px;">🔌 Error: ${e}</div>`;
+                });
+        }
+        function refreshTradeHistory() {
+            document.getElementById('trade-history-container').innerHTML = '<div class="loading">Refreshing...</div>';
+            updateTradeHistory(currentTradePage);
+        }
+        
+        // ==================== LOGS ====================
+        function updateLogs() {
+            fetch('/api/logs')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.logs) {
+                        const logsDiv = document.getElementById('logs');
+                        const displayLogs = data.logs.slice(-30);
+                        logsDiv.innerHTML = displayLogs.map(log => {
+                            let cls = 'log-info';
+                            const lower = log.toLowerCase();
+                            if (lower.includes('error') || lower.includes('❌') || lower.includes('fail')) cls = 'log-error';
+                            else if (lower.includes('warning') || lower.includes('⚠')) cls = 'log-warn';
+                            else if (lower.includes('success') || lower.includes('✅') || lower.includes('profit')) cls = 'log-success';
+                            return `<div class="log-entry ${cls}">${log}</div>`;
+                        }).join('');
+                        logsDiv.scrollTop = logsDiv.scrollHeight;
+                    }
+                }).catch(e => console.error('Logs error:', e));
+        }
+        
+        // ==================== AUTO REFRESH ====================
+        setInterval(updateMarketData, 60000);      // 60s – 24h stats & candles only (prices via WebSocket)
+        setInterval(updateBotAnalysis, 30000);      // 30s – AI analysis
+        setInterval(updateAccountOverview, 30000);  // 30s – balance
+        setInterval(updatePositionsTable, 10000);   // 10s – positions
+        setInterval(updateLogs, 5000);              // 5s  – logs (không gọi Binance)
+        setInterval(updateTradeHistory, 60000);     // 60s – history
+        
+        // Initial load
+        initMiniCharts();
+        updateMarketData();
+        updateBotAnalysis();
+        updateAccountOverview();
+        updatePositionsTable();
+        updateLogs();
+        updateTradeHistory();
+
+        // ==================== RETRAIN TERMINAL ====================
+        let retrainPolling = null;
+        let retrainLogOffset = 0;
+
+        function startRetrain() {
+            const btn = document.getElementById('retrain-btn');
+            const term = document.getElementById('retrain-terminal');
+            const status = document.getElementById('retrain-status');
+
+            if (btn.disabled) return;
+
+            if (!confirm('Start V6 re-training for BTC, ETH, SOL?\nThis takes a few minutes and uses network to fetch market data.')) return;
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Training...';
+            btn.style.opacity = '0.6';
+            status.textContent = '';
+            term.innerHTML = '<span style="color:#58a6ff;">[' + new Date().toLocaleTimeString() + '] 🚀 Starting re-train...</span>\n';
+            retrainLogOffset = 0;
+
+            fetch('/api/retrain', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) {
+                        term.innerHTML += '<span style="color:#f85149;">❌ ' + data.error + '</span>\n';
+                        btn.disabled = false;
+                        btn.textContent = '🚀 Start Re-Train V6';
+                        btn.style.opacity = '1';
+                        return;
+                    }
+                    // Start polling
+                    retrainPolling = setInterval(pollRetrain, 1500);
+                })
+                .catch(e => {
+                    term.innerHTML += '<span style="color:#f85149;">❌ Network error: ' + e + '</span>\n';
+                    btn.disabled = false;
+                    btn.textContent = '🚀 Start Re-Train V6';
+                    btn.style.opacity = '1';
+                });
+        }
+
+        function pollRetrain() {
+            fetch('/api/retrain_status?since=' + retrainLogOffset)
+                .then(r => r.json())
+                .then(data => {
+                    const term = document.getElementById('retrain-terminal');
+                    const status = document.getElementById('retrain-status');
+
+                    if (data.logs && data.logs.length > 0) {
+                        data.logs.forEach(line => {
+                            const color = line.includes('❌') || line.includes('Error') ? '#f85149'
+                                : line.includes('✅') || line.includes('PROFITABLE') ? '#3fb950'
+                                : line.includes('⏳') || line.includes('Training') ? '#58a6ff'
+                                : line.includes('⚠') ? '#d29922'
+                                : '#c9d1d9';
+                            term.innerHTML += '<span style="color:' + color + ';">' + escapeHtml(line) + '</span>\n';
+                        });
+                        retrainLogOffset = data.total;
+                        term.scrollTop = term.scrollHeight;
+                    }
+
+                    if (!data.running) {
+                        clearInterval(retrainPolling);
+                        retrainPolling = null;
+                        const btn = document.getElementById('retrain-btn');
+                        btn.disabled = false;
+                        btn.textContent = '🚀 Start Re-Train V6';
+                        btn.style.opacity = '1';
+
+                        if (data.result) {
+                            const syms = Object.keys(data.result);
+                            const avg = syms.reduce((s, k) => s + data.result[k].accuracy, 0) / syms.length;
+                            status.innerHTML = '<span style="color:#3fb950;font-weight:bold;">✅ Done — Avg ' + avg.toFixed(1) + '%</span>';
+                            term.innerHTML += '\n<span style="color:#3fb950;font-weight:bold;">═══════════════════════════════════\n✅ TRAINING COMPLETE — Models saved!\n═══════════════════════════════════</span>\n';
+                        } else {
+                            status.innerHTML = '<span style="color:#f85149;">❌ Failed</span>';
+                        }
+                        term.scrollTop = term.scrollHeight;
+                    } else {
+                        status.textContent = '⏳ Training... (' + data.total + ' logs)';
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function escapeHtml(text) {
+            const d = document.createElement('div');
+            d.textContent = text;
+            return d.innerHTML;
+        }
+
+        // ==================== PWA / SERVICE WORKER ====================
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .then(() => console.log('SW registered'))
+                    .catch(err => console.warn('SW error', err));
+            });
+        }
+
+        // ==================== iOS INSTALL BANNER ====================
+        (function () {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const isStandalone = window.navigator.standalone === true;
+            const dismissed = localStorage.getItem('ios-pwa-banner-v1');
+            if (isIOS && !isStandalone && !dismissed) {
+                const b = document.getElementById('ios-banner');
+                if (b) b.classList.add('visible');
+            }
+        })();
+
+        function dismissIOSBanner() {
+            localStorage.setItem('ios-pwa-banner-v1', '1');
+            const b = document.getElementById('ios-banner');
+            if (b) b.classList.remove('visible');
+        }
+    </script>
+
+    <!-- ============================================================
+         BOTTOM NAVIGATION BAR — mobile / iPhone only (hidden on desktop)
+         ============================================================ -->
+    <nav class="bottom-nav" id="bottom-nav" role="navigation" aria-label="Quick controls">
+        <button class="bnav-btn" onclick="startBot()" aria-label="Start Bot">
+            <span class="bnav-icon">▶️</span>
+            <span class="bnav-label">START</span>
+        </button>
+        <button class="bnav-btn" onclick="stopBot()" aria-label="Stop Bot">
+            <span class="bnav-icon">⏹️</span>
+            <span class="bnav-label">STOP</span>
+        </button>
+        <button class="bnav-btn" onclick="checkBalance(); updatePositionsTable();" aria-label="Refresh Balance">
+            <span class="bnav-icon">💰</span>
+            <span class="bnav-label">BALANCE</span>
+        </button>
+        <button class="bnav-btn" onclick="refreshBotAnalysis()" aria-label="Refresh AI Analysis">
+            <span class="bnav-icon">🤖</span>
+            <span class="bnav-label">AI</span>
+        </button>
+        <button class="bnav-btn bnav-danger" onclick="emergencyCloseAll()" aria-label="Emergency Close All">
+            <span class="bnav-icon">🚨</span>
+            <span class="bnav-label">EMERGENCY</span>
+        </button>
+    </nav>
+</body>
+</html>
+

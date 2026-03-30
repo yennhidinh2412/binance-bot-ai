@@ -1,0 +1,43 @@
+# Binance Futures Trading Bot Requirements
+# Updated: March 2026 - Python 3.14.2 compatible
+# Tested and verified working versions
+
+# ===== CORE (Required) =====
+
+# Binance API
+python-binance>=1.0.35
+websockets>=16.0
+requests>=2.32.3
+aiohttp>=3.13.3
+
+# Data processing
+pandas>=3.0.1
+numpy>=2.4.2
+
+# Technical analysis
+ta>=0.11.0
+# pandas-ta>=0.3.14b0  # Optional, for extra indicators
+
+# Web framework
+flask>=3.1.3
+gunicorn>=22.0.0
+waitress>=3.0.2
+
+# Machine Learning
+scikit-learn>=1.8.0
+joblib>=1.4.2
+xgboost>=3.2.0  # Requires: brew install libomp (macOS)
+
+# Deep Learning (optional - requires Python <=3.13 for TensorFlow)
+# tensorflow>=2.18.0  # Not yet available for Python 3.14
+# keras>=3.13.2       # Needs TF/JAX/PyTorch backend
+
+# Logging
+loguru>=0.7.3
+
+# Utilities
+schedule>=1.2.2
+python-dateutil>=2.9.0
+python-dotenv>=1.1.0
+dateparser>=1.2.1
+plotly>=6.0.0

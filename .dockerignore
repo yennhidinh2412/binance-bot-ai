@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Environment & secrets
+.env
+
+# macOS
+.DS_Store
+__MACOSX/
+
+# Logs (persisted via volume)
+logs/*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Docs
+*.md
+!README.md
+
+# Test files (not needed in production)
+test_*.py
+*_test.py
+aggressive_trade_test.py
+comprehensive_system_test.py
+force_real_trade_test.py
+quick_intelligence_test.py
+
+# Scripts not needed in production
+update_testnet_keys.ps1
+cleanup_sltp.py
+

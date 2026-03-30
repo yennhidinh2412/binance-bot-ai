@@ -1,0 +1,25 @@
+# Environment & secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# macOS
+.DS_Store
+__MACOSX/
+
+# Logs
+logs/*.log
+
+# Runtime data (ephemeral on Render, private per-user)
+models/closed_trades.json
+models/trade_history.json
+models/performance_history.json
+
+# IDE
+.vscode/
+.idea/

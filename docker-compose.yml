@@ -1,0 +1,38 @@
+# ============================================
+# Bot AI Trading - Docker Compose
+# ============================================
+# Usage:
+#   docker compose up -d        (start)
+#   docker compose down         (stop)
+#   docker compose logs -f      (view logs)
+#   docker compose restart      (restart)
+
+services:
+  bot-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bot-ai-trading
+    restart: unless-stopped
+    ports:
+      - "${BOT_PORT:-8080}:8080"
+    env_file:
+      - .env
+    volumes:
+      # Persist logs and trade data outside container
+      - ./logs:/app/logs
+      - ./models/trade_history.json:/app/models/trade_history.json
+      - ./models/closed_trades.json:/app/models/closed_trades.json
+      - ./models/performance_history.json:/app/models/performance_history.json
+      - ./models/session_state.json:/app/models/session_state.json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
